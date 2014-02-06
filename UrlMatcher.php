@@ -1,10 +1,10 @@
 <?php
+include 'simple_html_dom.php';
 class UrlMatcher {
 	
 	public function count_keyword_at_url($url,$keyword,$case_sensitive=false){
 		//Проверка корректности URL
 		if (UrlMatcher::validate_url($url) == false) return array('success'=>false, 'message'=>'URL is invalid');
-		else echo 'url is valid <br />'    ;
 
 		//--------------Получение страницы. BEGIN-----------------
 			$ch = curl_init($url);
@@ -43,7 +43,7 @@ class UrlMatcher {
 			//3. Иначе пытаемся определить кодировку текста сами.
 			else{
 				$page_encoding=mb_detect_encoding($page_content);
-				//if (!$page_encoding) $warnings[]='Page encoding wasn\'t identified, search results can be wrong';
+				if (!$page_encoding) $encode_warning='Page encoding wasn\'t identified, search results can be wrong';
 			}
 
 			
@@ -55,8 +55,9 @@ class UrlMatcher {
 			}
 		//-----------------Определение кодировки страницы. END-------------
 
-		
-		
+		//Раскомментировав следующую строку, можно увидеть содержимое страницы
+		//echo '<pre>'.htmlspecialchars($page_content,NULL,'').'</pre>';			
+
 		//Ищем ключевое слово отдельно в тегах 'head' и 'body'
 		$matches=array();
 		foreach (array('head','body') as $tag) {
@@ -67,10 +68,7 @@ class UrlMatcher {
 			
 		//Возвращаем результат
 		$result = array('success' => true, 'matches' => $matches);
-		//if (isset($warnings)) $result['message']=implode('; ', $warnings);
-
-		// print_r ($result);
-		// echo '<pre>'.htmlspecialchars($page_content,NULL,'').'</pre>';
+		if (isset($encode_warning)) $result['message']=$encode_warning;
 
 		return $result;
 	}
@@ -78,13 +76,14 @@ class UrlMatcher {
 	//Функция ищет количество появлений ключевого слова в тексте
 	private function keyword_matches($keyword,$html,$case_sensitive)
 	{
-		$regexp='#'.preg_quote($keyword).'#';
+		$regexp='#'.preg_quote($keyword,'#').'#';
 		if (!$case_sensitive) $regexp.='i';
 
 		preg_match_all($regexp, $html,$res);
 		return count($res[0]);
 	}
 
+	//Функция проверки корректности URL
 	private function validate_url(&$url) {
 	   if (empty($url)) return false;//проверка на пустоту
 
