@@ -11,10 +11,14 @@ class UrlMatcher {
 			curl_setopt($ch, CURLOPT_HEADER,		 1);	//http-заголовки в ответ
 			curl_setopt($ch, CURLOPT_VERBOSE, 		 1);	//человекочитаемое сообщение об ошибках
 			curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);//отключить проверку сертификатов для https
-		    	curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);	//получать результат в переменную
+		    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);	//получать результат в переменную
 			curl_setopt($ch, CURLOPT_TIMEOUT,        20);   //ждать загрузки 20 секунд
 
-			$page_content=curl_exec_follow($ch);//Оригинальная curl_exec на сервере не работает из-за safe mode.
+			/*
+				Оригинальная curl_exec на сервере может не работать из-за safe_mode(так происходит на test-litvinenko.comule.com)
+				Поэтому вместо curl_exec вызывается функция curl_exec_follow, выполняющая редиректы вручную. curl_exec_follow описана в этом же файле ниже
+			*/
+			$page_content= curl_exec_follow($ch);
 			$curl_error=curl_error($ch);
 
 			$content_type=curl_getinfo($ch,CURLINFO_CONTENT_TYPE);//информация о типе и кодировке содержимого
@@ -54,7 +58,7 @@ class UrlMatcher {
 			}
 		//-----------------Определение кодировки страницы. END-------------
 
-		//Раскомментировав следующую строку, можно увидеть содержимое страницы
+		//Раскомментировав, можно увидеть содержимое страницы
 		//echo '<pre>'.htmlspecialchars($page_content,NULL,'').'</pre>';			
 
 		//Ищем ключевое слово отдельно в тегах 'head' и 'body'
@@ -67,7 +71,6 @@ class UrlMatcher {
 			
 		//Возвращаем результат
 		$result = array('success' => true, 'matches' => $matches);
-		if (isset($encode_warning)) $result['message']=$encode_warning;
 
 		return $result;
 	}
@@ -94,13 +97,9 @@ class UrlMatcher {
 	}
 }
 
-
+//Эта функция заменяет FOLLOW_LOCATION в curl. Она сама выполняет редиректы. Писал не я, писал добрый человек в интернете.
 function curl_exec_follow($ch, &$maxredirect = null) {
-  
-  // we emulate a browser here since some websites detect
-  // us as a bot and don't let us do our job
   $user_agent = "User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64; rv:27.0) Gecko/20100101 Firefox/27.0";
-              
   curl_setopt($ch, CURLOPT_USERAGENT, $user_agent );
 
   $mr = $maxredirect === null ? 5 : intval($maxredirect);
